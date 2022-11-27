@@ -1,0 +1,6 @@
+CREATE TABLE "" (
+	"id"	INTEGER UNIQUE,
+	"username"	TEXT UNIQUE,
+	"password"	TEXT,
+	PRIMARY KEY("id" AUTOINCREMENT)
+);
