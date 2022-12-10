@@ -3,10 +3,10 @@
 {% block nav %}
     <ul>
         <li>
-            <button type="button" class="btn btn-outline-primary">Зарегестрироваться</button>
+            <a type="button" class="btn btn-outline-primary" href="{{url_for('auth.register')}}">Зарегестрироваться</a>
         </li>
         <li>
-            <button class="btn btn-primary" type="submit">Войти</button>
+            <a class="btn btn-primary" type="button" href="{{url_for('auth.login')}}">Войти</a>
         </li>
     </ul>
 {% endblock %}

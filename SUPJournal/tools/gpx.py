@@ -17,7 +17,7 @@ class GpxFile:
         self.med_min_max_point = self.get_med_min_max_point()
         self.zoom = self.find_zoom()
         self.map = self.create_map()
-        self.test_dist = str(round((self.__gpx.tracks[0].segments[0].length_2d() / 1000), 2)) + " км"
+        self.dist = str(round((self.__gpx.tracks[0].segments[0].length_2d() / 1000), 2)) + " км"
 
     @staticmethod
     def gpx_parser(file):
