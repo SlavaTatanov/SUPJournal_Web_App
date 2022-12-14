@@ -1,5 +1,6 @@
 .idea/
 **/__pycache__
 SUPJournal/tools/test.gpx
+SUPJournal/tools/map.html
 SUPJournal/templates/map.html
 
