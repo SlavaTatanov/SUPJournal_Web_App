@@ -1,8 +1,8 @@
-import psycopg2
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session, g
 from werkzeug.security import generate_password_hash, check_password_hash
-from SUPJournal.database1 import db_query
+from SUPJournal.database.database import db
 from SUPJournal.database.models import User
+from sqlalchemy import exc
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -34,10 +34,11 @@ def register():
         if error is None:
             try:
                 password = generate_password_hash(password)
-                db_query("""INSERT INTO public.users (login, pass, e_mail) VALUES (%s, %s, %s)""",
-                         (username, password, e_mail), insert=True)
+                user = User(login=username, pass_=password, e_mail=e_mail)
+                db.session.add(user)
+                db.session.commit()
                 return redirect(url_for("auth.login"))
-            except psycopg2.errors.UniqueViolation:
+            except exc.IntegrityError:
                 error = "Такой пользователь уже существует"
         flash(error)
     return render_template("auth/register.html")
@@ -50,7 +51,6 @@ def login():
         error = None
 
         query = User.query.filter_by(login=user_login).first()
-        print(query)
 
         if query is None:
             error = f"Пользователь {user_login} не существует"
