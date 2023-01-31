@@ -72,3 +72,14 @@ nav ul li a:hover {
   background-color: white;
   text-align: center;
 }
+.supbasediv{
+  height: 80%;
+  width: 80%;
+  padding: 2%;
+  background-color: white;
+  transform: translate(-50%, -50%); 
+  position: relative;
+  top: 45%; 
+  left: 50%;
+  border-radius: 2em;
+}

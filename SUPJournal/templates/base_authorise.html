@@ -8,8 +8,13 @@
     <a href="#">Журнал</a>
   </li>
   <li>
-    <a href="#">{{user}}</a>
-  </li>
+    <div class="dropdown">
+      <a class="dropdown-toggl" role="button" data-bs-toggle="dropdown" href="#">{{user}}</a>
+      <ul class="dropdown-menu dropdown-menu-dark">
+        <li><a class="dropdown-item" href="{{url_for('index.profile', username=g.user['login'])}}">Профиль</a></li>
+        <li><a class="dropdown-item" href="{{url_for('auth.logout')}}">Выйти</a></li>
+      </ul>
+    </div>
 </ul>
 {% endblock %}
 
