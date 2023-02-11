@@ -7,6 +7,15 @@ from werkzeug.security import check_password_hash
 
 bp = Blueprint("api_mobile", __name__, url_prefix="/api/mobile")
 
+class Response:
+    def __init__(self, status: str, token: str = "", msg: str = ""):
+        self.status = status
+        self.token = token
+        self.msg = msg
+
+    def to_json(self):
+        return jsonify(status=self.status, token=self.token, msg=self.msg)
+
 
 @bp.route("/auth", methods=["POST"])
 def mobile_auth():
@@ -15,8 +24,8 @@ def mobile_auth():
 
     query = User.query.filter_by(login=user).first()
     if query is None:
-        return "Пользователь не существует"
+        return Response("false", msg="Пользователь не существует").to_json()
     elif not check_password_hash(query.pass_, password):
-        return "Неверный пароль"
+        return Response("false", msg="Неверный пароль").to_json()
 
-    return jsonify(token=create_access_token(query.login))
+    return Response("ok", create_access_token(query.login)).to_json()
