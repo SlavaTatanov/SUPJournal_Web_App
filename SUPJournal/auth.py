@@ -35,7 +35,7 @@ def register():
             try:
                 password = generate_password_hash(password)
                 user = User(login=username, pass_=password, e_mail=e_mail)
-                db.session.add(user)
+                db.session.add(user)  # Реализация от Flask-SQLAlchemy (см. док)
                 db.session.commit()
                 return redirect(url_for("auth.login"))
             except exc.IntegrityError:

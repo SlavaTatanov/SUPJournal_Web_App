@@ -2,9 +2,10 @@
 API для общения мобильного приложения с сервером.
 """
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import create_access_token, jwt_required
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from SUPJournal.database.models import User
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
+from SUPJournal.database.database import db
 
 bp = Blueprint("api_mobile", __name__, url_prefix="/api/mobile")
 
@@ -50,10 +51,32 @@ def mobile_auth():
 
     return Response(STATUS["ok"], token=create_access_token(query.login)).to_json()
 
+@bp.route("/register", methods=["POST"])
+def mobile_register():
+    """
+    Регистрация пользователя.
+    !! Надо допиливать !!
+    """
+    login = request.json["user"]
+    pass_ = request.json["pass_"]
+    e_mail = request.json["e_mail"]
+
+    password = generate_password_hash(pass_)
+
+    user = User(login=login, pass_=password, e_mail=e_mail)
+    db.session.add(user)
+    db.session.commit()
+
+    return  Response(STATUS["ok"],
+                     token=create_access_token(login),
+                     msg="Успешная регистрация").to_json()
+
+
 @bp.route("/check", methods=["GET"])
 @jwt_required()
 def mobile_check():
     """
     Валидация юзера
     """
-    return Response(STATUS["ok"], msg="Токен валиден").to_json()
+    user = get_jwt_identity()
+    return Response(STATUS["ok"], msg=f"Токен валиден для {user}").to_json()
