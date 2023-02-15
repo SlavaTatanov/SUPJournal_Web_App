@@ -10,8 +10,9 @@ from SUPJournal.database.database import db
 bp = Blueprint("api_mobile", __name__, url_prefix="/api/mobile")
 
 STATUS = {"incorrect_user": "incorrect_user",
-             "incorrect_password": "incorrect_password",
-             "ok": "ok"}  # Стандартные значения которые сервер отдаст в статусе
+          "incorrect_password": "incorrect_password",
+          "ok": "ok",
+          "access_denied": "access_denied"}  # Стандартные значения которые сервер отдаст в статусе
 
 class Response:
     """
@@ -80,3 +81,16 @@ def mobile_check():
     """
     user = get_jwt_identity()
     return Response(STATUS["ok"], msg=f"Токен валиден для {user}").to_json()
+
+@bp.route("/delete", methods=["DELETE"])
+@jwt_required()
+def mobile_delete_user():
+    """
+    Удаление юзера
+    """
+    user = request.json["user"]
+    if user == get_jwt_identity():
+        db.session.delete(User.query.filter_by(login=user).first())
+        db.session.commit()
+        return Response(STATUS["ok"], msg=f"Пользователь {user} - удален").to_json()
+    return Response(STATUS["access_denied"], msg=f"Ошибка доступа").to_json()
