@@ -45,6 +45,7 @@ def mobile_auth():
     password = request.json['pass_']
 
     query = User.query.filter_by(login=user).first()
+
     if query is None:
         return Response(STATUS["incorrect_user"], msg="Пользователь не существует").to_json()
     elif not check_password_hash(query.pass_, password):
@@ -90,7 +91,28 @@ def mobile_delete_user():
     """
     user = request.json["user"]
     if user == get_jwt_identity():
-        db.session.delete(User.query.filter_by(login=user).first())
+        db.session.query(User).filter(User.login == user).delete()
         db.session.commit()
         return Response(STATUS["ok"], msg=f"Пользователь {user} - удален").to_json()
     return Response(STATUS["access_denied"], msg=f"Ошибка доступа").to_json()
+
+@bp.route("/change_password", methods=["POST"])
+@jwt_required()
+def change_password():
+    """
+    Смена действующего пароля
+    """
+    user = request.json["user"]
+    password = request.json["password"]
+    new_password = request.json["new_password"]
+
+    if user == get_jwt_identity():
+        user_query = User.query.filter_by(login=user).first()
+        if check_password_hash(user_query.pass_, password):
+            user_query.pass_ = generate_password_hash(new_password)
+            db.session.commit()
+            return Response(STATUS["ok"], msg="Пароль успешно изменен").to_json()
+        elif not check_password_hash(user_query.pass_, password):
+            return Response(STATUS["incorrect_password"], msg="Неверный пароль").to_json()
+
+    return Response(STATUS["access_denied"], msg="Доступ запрещен").to_json()
