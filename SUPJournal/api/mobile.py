@@ -98,7 +98,7 @@ def mobile_delete_user():
 
 @bp.route("/change_password", methods=["POST"])
 @jwt_required()
-def change_password():
+def mobile_change_password():
     """
     Смена действующего пароля
     """
@@ -116,3 +116,12 @@ def change_password():
             return Response(STATUS["incorrect_password"], msg="Неверный пароль").to_json()
 
     return Response(STATUS["access_denied"], msg="Доступ запрещен").to_json()
+
+@bp.route("/get_training", methods=["GET"])
+@jwt_required()
+def mobile_get_training():
+    """
+    Заготовка для получения данных о тренировке по ее id
+    """
+    training_id = request.args.get("training_id")
+    return Response(status=STATUS["ok"], msg=f"Тренировка {training_id}").to_json()
