@@ -32,12 +32,6 @@ class Response:
         body = {k: v for k, v in self.__dict__.items() if v}
         return jsonify(**body)
 
-def create_response(resp: Response):
-    """
-    Создание JSON для ответа
-    """
-    return resp.to_json()
-
 
 @bp.route("/auth", methods=["POST"])
 def mobile_auth():
@@ -53,11 +47,11 @@ def mobile_auth():
     query = User.query.filter_by(login=user).first()
 
     if query is None:
-        return create_response(Response(STATUS["incorrect_user"], msg="Пользователь не существует"))
+        return Response(STATUS["incorrect_user"], msg="Пользователь не существует").to_json()
     elif not check_password_hash(query.pass_, password):
-        return create_response(Response(STATUS["incorrect_password"], msg="Неверный пароль"))
+        return Response(STATUS["incorrect_password"], msg="Неверный пароль").to_json()
 
-    return create_response(Response(STATUS["ok"], token=create_access_token(query.login)))
+    return Response(STATUS["ok"], token=create_access_token(query.login)).to_json()
 
 @bp.route("/register", methods=["POST"])
 def mobile_register():
@@ -75,9 +69,9 @@ def mobile_register():
     db.session.add(user)
     db.session.commit()
 
-    return  create_response(Response(STATUS["ok"],
-                                     token=create_access_token(login),
-                                     msg="Успешная регистрация"))
+    return  Response(STATUS["ok"],
+                     token=create_access_token(login),
+                     msg="Успешная регистрация").to_json()
 
 
 @bp.route("/check", methods=["GET"])
@@ -87,7 +81,7 @@ def mobile_check():
     Валидация юзера
     """
     user = get_jwt_identity()
-    return create_response(Response(STATUS["ok"], msg=f"Токен валиден для {user}"))
+    return Response(STATUS["ok"], msg=f"Токен валиден для {user}").to_json()
 
 @bp.route("/delete", methods=["DELETE"])
 @jwt_required()
@@ -99,8 +93,8 @@ def mobile_delete_user():
     if user == get_jwt_identity():
         db.session.query(User).filter(User.login == user).delete()
         db.session.commit()
-        return create_response(Response(STATUS["ok"], msg=f"Пользователь {user} - удален"))
-    return create_response(Response(STATUS["access_denied"], msg=f"Ошибка доступа"))
+        return Response(STATUS["ok"], msg=f"Пользователь {user} - удален").to_json()
+    return Response(STATUS["access_denied"], msg=f"Ошибка доступа").to_json()
 
 @bp.route("/change_password", methods=["POST"])
 @jwt_required()
@@ -117,11 +111,11 @@ def mobile_change_password():
         if check_password_hash(user_query.pass_, password):
             user_query.pass_ = generate_password_hash(new_password)
             db.session.commit()
-            return create_response(Response(STATUS["ok"], msg="Пароль успешно изменен"))
+            return Response(STATUS["ok"], msg="Пароль успешно изменен").to_json()
         elif not check_password_hash(user_query.pass_, password):
-            return create_response(Response(STATUS["incorrect_password"], msg="Неверный пароль"))
+            return Response(STATUS["incorrect_password"], msg="Неверный пароль").to_json()
 
-    return create_response(Response(STATUS["access_denied"], msg="Доступ запрещен"))
+    return Response(STATUS["access_denied"], msg="Доступ запрещен").to_json()
 
 @bp.route("/get_training", methods=["GET"])
 @jwt_required()
@@ -130,4 +124,4 @@ def mobile_get_training():
     Заготовка для получения данных о тренировке по ее id
     """
     training_id = request.args.get("training_id")
-    return create_response(Response(status=STATUS["ok"], msg=f"Тренировка {training_id}"))
+    return Response(status=STATUS["ok"], msg=f"Тренировка {training_id}").to_json()
