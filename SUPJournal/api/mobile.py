@@ -21,9 +21,11 @@ class ResponseBodyInterface:
     Интерфейс ответа сервера для мобильного API. Указывает допустимые поля в ответе.
     При создании объекта для его отправки применяется метод to_json.
     """
-    def __init__(self, token: str = "", msg: str = ""):
+    def __init__(self, token: str = None, msg: str = None, user: str = None, user_id: int = None):
         self.token = token
         self.msg = msg
+        self.user = user
+        self.user_id = user_id
 
     def to_json(self):
         """
@@ -52,7 +54,9 @@ def mobile_auth():
     elif not check_password_hash(query.pass_, password):
         return Response(status=401, headers={ERROR_HEADER: STATUS["incorrect_password"]})
 
-    return ResponseBodyInterface(token=create_access_token(query.login)).to_json()
+    return ResponseBodyInterface(token=create_access_token(query.login),
+                                 user=query.login,
+                                 user_id=query.user_id).to_json()
 
 @bp.route("/register", methods=["POST"])
 def mobile_register():
