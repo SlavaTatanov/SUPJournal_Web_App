@@ -1,7 +1,7 @@
 """
 API для общения мобильного приложения с сервером.
 """
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, Response
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from SUPJournal.database.models import User
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -14,13 +14,14 @@ STATUS = {"incorrect_user": "incorrect_user",
           "ok": "ok",
           "access_denied": "access_denied"}  # Стандартные значения которые сервер отдаст в статусе
 
-class Response:
+ERROR_HEADER = "X-Error-Message"
+
+class ResponseBodyInterface:
     """
     Интерфейс ответа сервера для мобильного API. Указывает допустимые поля в ответе.
     При создании объекта для его отправки применяется метод to_json.
     """
-    def __init__(self, status: str, token: str = "", msg: str = ""):
-        self.status = status
+    def __init__(self, token: str = "", msg: str = ""):
         self.token = token
         self.msg = msg
 
@@ -47,11 +48,11 @@ def mobile_auth():
     query = User.query.filter_by(login=user).first()
 
     if query is None:
-        return Response(STATUS["incorrect_user"], msg="Пользователь не существует").to_json()
+        return Response(status=401, headers={ERROR_HEADER: STATUS["incorrect_user"]})
     elif not check_password_hash(query.pass_, password):
-        return Response(STATUS["incorrect_password"], msg="Неверный пароль").to_json()
+        return Response(status=401, headers={ERROR_HEADER: STATUS["incorrect_password"]})
 
-    return Response(STATUS["ok"], token=create_access_token(query.login)).to_json()
+    return ResponseBodyInterface(token=create_access_token(query.login)).to_json()
 
 @bp.route("/register", methods=["POST"])
 def mobile_register():
@@ -69,9 +70,8 @@ def mobile_register():
     db.session.add(user)
     db.session.commit()
 
-    return  Response(STATUS["ok"],
-                     token=create_access_token(login),
-                     msg="Успешная регистрация").to_json()
+    return  ResponseBodyInterface(token=create_access_token(login),
+                                  msg="Успешная регистрация").to_json()
 
 
 @bp.route("/check", methods=["GET"])
@@ -81,7 +81,7 @@ def mobile_check():
     Валидация юзера
     """
     user = get_jwt_identity()
-    return Response(STATUS["ok"], msg=f"Токен валиден для {user}").to_json()
+    return ResponseBodyInterface(STATUS["ok"], msg=f"Токен валиден для {user}").to_json()
 
 @bp.route("/delete", methods=["DELETE"])
 @jwt_required()
@@ -93,8 +93,8 @@ def mobile_delete_user():
     if user == get_jwt_identity():
         db.session.query(User).filter(User.login == user).delete()
         db.session.commit()
-        return Response(STATUS["ok"], msg=f"Пользователь {user} - удален").to_json()
-    return Response(STATUS["access_denied"], msg=f"Ошибка доступа").to_json()
+        return ResponseBodyInterface(msg=f"Пользователь {user} - удален").to_json()
+    return Response(status=403, headers={ERROR_HEADER: STATUS["access_denied"]})
 
 @bp.route("/change_password", methods=["POST"])
 @jwt_required()
@@ -111,11 +111,11 @@ def mobile_change_password():
         if check_password_hash(user_query.pass_, password):
             user_query.pass_ = generate_password_hash(new_password)
             db.session.commit()
-            return Response(STATUS["ok"], msg="Пароль успешно изменен").to_json()
+            return ResponseBodyInterface(msg="Пароль успешно изменен").to_json()
         elif not check_password_hash(user_query.pass_, password):
-            return Response(STATUS["incorrect_password"], msg="Неверный пароль").to_json()
+            return ResponseBodyInterface(STATUS["incorrect_password"], msg="Неверный пароль").to_json()
 
-    return Response(STATUS["access_denied"], msg="Доступ запрещен").to_json()
+    return Response(status=403, headers={ERROR_HEADER: STATUS["access_denied"]})
 
 @bp.route("/get_training", methods=["GET"])
 @jwt_required()
@@ -124,4 +124,4 @@ def mobile_get_training():
     Заготовка для получения данных о тренировке по ее id
     """
     training_id = request.args.get("training_id")
-    return Response(status=STATUS["ok"], msg=f"Тренировка {training_id}").to_json()
+    return ResponseBodyInterface(msg=f"Тренировка {training_id}").to_json()
