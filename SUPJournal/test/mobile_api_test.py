@@ -7,12 +7,28 @@ def register(login, password, e_mail):
                         json={"user": login, "pass_": password, "e_mail": e_mail})
     return req
 
-
 def auth(login: str, password: str):
     req = requests.post("http://127.0.0.1:5000/api/mobile/auth",
                         json={"user": login, "pass_": password})
     return req
 
+def check(token, user):
+    req = requests.get("http://127.0.0.1:5000/api/mobile/check",
+                       headers={"Authorization": f"Bearer {token}"},
+                       params={"user": user})
+    return req
+
+def change_password(user: str,password: str, new_password: str, token: str):
+    req = requests.post("http://127.0.0.1:5000/api/mobile/change_password",
+                        headers={"Authorization": f"Bearer {token}"},
+                        json={"user": user, "password": password, "new_password": new_password})
+    return req
+
+def get_training(token):
+    req = requests.get("http://127.0.0.1:5000/api/mobile/get_training",
+                       params={"training_id": "123"},
+                       headers={"Authorization": f"Bearer {token}"})
+    return req
 
 def delete(token, user):
     req = requests.delete("http://127.0.0.1:5000/api/mobile/delete",
@@ -75,7 +91,53 @@ class MobileApiTest(unittest.TestCase):
         self.assertEqual(resp2.status_code, 401, "Статус код, неверный пароль")
         self.assertEqual(resp2.headers["X-Error-Message"], "incorrect_password", "Заголовок, не верный пароль")
 
-    def test_5_delete_user(self):
+    def test_5_check(self):
+        """
+        Проверка токена
+        """
+        resp = check(self.user.token, self.user.login)
+        self.assertEqual(resp.status_code, 200, "Статус код, проверка токена")
+
+    def test_6_err_check(self):
+        """
+        Неуспешные проверки токена
+        """
+        resp1 = check(self.user.old_token, self.user.login)
+        self.assertEqual(resp1.status_code, 401, "Статус код, просроченный токен")
+        self.assertEqual(resp1.headers["Content-Type"], "application/json", "Проверка содержимого")
+        self.assertEqual(resp1.json()["msg"], "Token has expired", "Сообщение о просроченном токене")
+        resp2 = check(self.user.token, None)
+        self.assertNotEqual(resp2.headers["Content-Type"], "application/json", "body нет")
+        self.assertEqual(resp2.status_code, 403, "Статус код неверный токен для этого пользователя")
+        self.assertEqual(resp2.headers["X-Error-Message"], "access_denied", "Сообщение в заголовке что доступа нет")
+
+    def test_7_change_pass(self):
+        """
+        Проверка смены пароля
+        """
+        new_pass = "new pass"
+        resp1 = change_password(self.user.login, self.user.password, new_pass, self.user.token)
+        self.assertEqual(resp1.status_code, 200, "Смена пароля статус код")
+        self.user.password = new_pass
+        resp2 = auth(self.user.login, self.user.password)
+        self.assertEqual(resp2.status_code, 200, "Авторизация с новым паролем")
+
+    def test_8_err_change_pass(self):
+        """
+        Неуспешная смена пароля
+        """
+        resp1 = change_password(self.user.login, "Неверный пароль", "Новый пароль", self.user.token)
+        self.assertEqual(resp1.status_code, 401, "Передача неверного действующего пароля")
+        self.assertTrue("X-Error-Message" in resp1.headers, "Проверка ключа в заголовке")
+        self.assertEqual(resp1.headers["X-Error-Message"], "incorrect_password", "Неверный пароль, сообщение в заголовке")
+        resp2 = change_password(self.user.login, self.user.password, "Новый пароль", self.user.old_token)
+        self.assertEqual(resp2.status_code, 401, "Не валид токен")
+        self.assertFalse("X-Error-Message" in resp2.headers, "Проверка ключа в заголовке")
+        self.assertEqual(resp2.headers["Content-Type"], "application/json", "Проверка содержимого")
+        self.assertEqual(resp2.json()["msg"], "Token has expired", "Сообщение о просроченном токене")
+
+
+    def test_9_delete_user(self):
         """
         Удаление пользователя
         """

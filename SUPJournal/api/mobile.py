@@ -84,8 +84,11 @@ def mobile_check():
     """
     Валидация юзера
     """
-    user = get_jwt_identity()
-    return ResponseBodyInterface(STATUS["ok"], msg=f"Токен валиден для {user}").to_json()
+    user = request.args.get("user")
+    if user == get_jwt_identity():
+        return ResponseBodyInterface(msg=f"Токен валиден для {user}").to_json()
+    else:
+        return Response(status=403, headers={ERROR_HEADER: STATUS["access_denied"]})
 
 @bp.route("/delete", methods=["DELETE"])
 @jwt_required()
@@ -117,9 +120,9 @@ def mobile_change_password():
             db.session.commit()
             return ResponseBodyInterface(msg="Пароль успешно изменен").to_json()
         elif not check_password_hash(user_query.pass_, password):
-            return ResponseBodyInterface(STATUS["incorrect_password"], msg="Неверный пароль").to_json()
+            return Response(status=401, headers={ERROR_HEADER: STATUS["incorrect_password"]})
 
-    return Response(status=403, headers={ERROR_HEADER: STATUS["access_denied"]})
+    return Response(status=401, headers={ERROR_HEADER: STATUS["access_denied"]})
 
 @bp.route("/get_training", methods=["GET"])
 @jwt_required()
