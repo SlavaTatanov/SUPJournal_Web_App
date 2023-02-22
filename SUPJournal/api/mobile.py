@@ -3,16 +3,18 @@ API для общения мобильного приложения с серв�
 """
 from flask import Blueprint, jsonify, request, Response
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from SUPJournal.database.models import User
 from werkzeug.security import check_password_hash, generate_password_hash
+from sqlalchemy.exc import IntegrityError
+from SUPJournal.database.models import User
 from SUPJournal.database.database import db
+from SUPJournal.tools.email_check import check_email
 
 bp = Blueprint("api_mobile", __name__, url_prefix="/api/mobile")
 
-STATUS = {"incorrect_user": "incorrect_user",
-          "incorrect_password": "incorrect_password",
-          "ok": "ok",
-          "access_denied": "access_denied"}  # Стандартные значения которые сервер отдаст в статусе
+ERROR = {"incorrect_user": "incorrect_user",
+         "incorrect_password": "incorrect_password",
+         "access_denied": "access_denied",
+         "invalid_email": "invalid_email"}  # Стандартные значения которые сервер отдаст в статусе
 
 ERROR_HEADER = "X-Error-Message"
 
@@ -44,15 +46,17 @@ def mobile_auth():
     Если ок -> отдаем JWT токен.
     Если не ок -> говорим пользователю, что пошло не так.
     """
+    # Сбор данных из тела запроса
     user = request.json['user']
     password = request.json['pass_']
 
+    # Запрос в бд, проверка результата, если ок -> 200 и токен, если нет -> 401 и заголовок с ошибкой
     query = User.query.filter_by(login=user).first()
 
     if query is None:
-        return Response(status=401, headers={ERROR_HEADER: STATUS["incorrect_user"]})
+        return Response(status=401, headers={ERROR_HEADER: ERROR["incorrect_user"]})
     elif not check_password_hash(query.pass_, password):
-        return Response(status=401, headers={ERROR_HEADER: STATUS["incorrect_password"]})
+        return Response(status=401, headers={ERROR_HEADER: ERROR["incorrect_password"]})
 
     return ResponseBodyInterface(token=create_access_token(query.login),
                                  user=query.login,
@@ -62,21 +66,29 @@ def mobile_auth():
 def mobile_register():
     """
     Регистрация пользователя.
-    !! Надо допиливать !!
     """
+    # Сбор данных из тела запроса
     login = request.json["user"]
     pass_ = request.json["pass_"]
     e_mail = request.json["e_mail"]
 
+    # Проверка синтаксиса почты и возможности доставки на этот адрес
+    if not check_email(e_mail):
+        return Response(status=400, headers={ERROR_HEADER: ERROR["invalid_email"]})
+
     password = generate_password_hash(pass_)
 
-    user = User(login=login, pass_=password, e_mail=e_mail)
-    db.session.add(user)
-    db.session.commit()
-
-    return  ResponseBodyInterface(token=create_access_token(login),
-                                  msg="Успешная регистрация").to_json()
-
+    # Попытка добавить пользователя в БД, в случае если транзакция не прошла вернем 409, если ок 200 и токен
+    try:
+        user = User(login=login, pass_=password, e_mail=e_mail)
+        db.session.add(user)
+        db.session.commit()
+        return ResponseBodyInterface(token=create_access_token(login),
+                                     user=login,
+                                     user_id=user.user_id,
+                                     msg="Успешная регистрация").to_json()
+    except IntegrityError:
+        return Response(status=409, headers={ERROR_HEADER: ERROR["incorrect_user"]})
 
 @bp.route("/check", methods=["GET"])
 @jwt_required()
@@ -88,7 +100,7 @@ def mobile_check():
     if user == get_jwt_identity():
         return ResponseBodyInterface(msg=f"Токен валиден для {user}").to_json()
     else:
-        return Response(status=403, headers={ERROR_HEADER: STATUS["access_denied"]})
+        return Response(status=403, headers={ERROR_HEADER: ERROR["access_denied"]})
 
 @bp.route("/delete", methods=["DELETE"])
 @jwt_required()
@@ -101,7 +113,7 @@ def mobile_delete_user():
         db.session.query(User).filter(User.login == user).delete()
         db.session.commit()
         return ResponseBodyInterface(msg=f"Пользователь {user} - удален").to_json()
-    return Response(status=403, headers={ERROR_HEADER: STATUS["access_denied"]})
+    return Response(status=403, headers={ERROR_HEADER: ERROR["access_denied"]})
 
 @bp.route("/change_password", methods=["POST"])
 @jwt_required()
@@ -120,9 +132,9 @@ def mobile_change_password():
             db.session.commit()
             return ResponseBodyInterface(msg="Пароль успешно изменен").to_json()
         elif not check_password_hash(user_query.pass_, password):
-            return Response(status=401, headers={ERROR_HEADER: STATUS["incorrect_password"]})
+            return Response(status=401, headers={ERROR_HEADER: ERROR["incorrect_password"]})
 
-    return Response(status=401, headers={ERROR_HEADER: STATUS["access_denied"]})
+    return Response(status=401, headers={ERROR_HEADER: ERROR["access_denied"]})
 
 @bp.route("/get_training", methods=["GET"])
 @jwt_required()

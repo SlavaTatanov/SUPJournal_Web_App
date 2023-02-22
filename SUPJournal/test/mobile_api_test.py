@@ -1,37 +1,38 @@
 import unittest
 import requests
 
+URL = "http://127.0.0.1:5000"
 
 def register(login, password, e_mail):
-    req = requests.post("http://127.0.0.1:5000/api/mobile/register",
+    req = requests.post(f"{URL}/api/mobile/register",
                         json={"user": login, "pass_": password, "e_mail": e_mail})
     return req
 
 def auth(login: str, password: str):
-    req = requests.post("http://127.0.0.1:5000/api/mobile/auth",
+    req = requests.post(f"{URL}/api/mobile/auth",
                         json={"user": login, "pass_": password})
     return req
 
 def check(token, user):
-    req = requests.get("http://127.0.0.1:5000/api/mobile/check",
+    req = requests.get(f"{URL}/api/mobile/check",
                        headers={"Authorization": f"Bearer {token}"},
                        params={"user": user})
     return req
 
 def change_password(user: str,password: str, new_password: str, token: str):
-    req = requests.post("http://127.0.0.1:5000/api/mobile/change_password",
+    req = requests.post(f"{URL}/api/mobile/change_password",
                         headers={"Authorization": f"Bearer {token}"},
                         json={"user": user, "password": password, "new_password": new_password})
     return req
 
 def get_training(token):
-    req = requests.get("http://127.0.0.1:5000/api/mobile/get_training",
+    req = requests.get(f"{URL}/api/mobile/get_training",
                        params={"training_id": "123"},
                        headers={"Authorization": f"Bearer {token}"})
     return req
 
 def delete(token, user):
-    req = requests.delete("http://127.0.0.1:5000/api/mobile/delete",
+    req = requests.delete(f"{URL}/api/mobile/delete",
                           headers={"Authorization": f"Bearer {token}"},
                           json={"user": user})
     return req
@@ -64,12 +65,16 @@ class MobileApiTest(unittest.TestCase):
         self.assertEqual(self.user.token, None, "Проверка отсутствия токена перед записью")
         self.user.token = resp.json()["token"]
 
-    def test_2_another_register(self):
+    def test_2_err_register(self):
         """
-        Регистрация существующего юзера
+        Ошибочные регистрации
         """
         resp = register(self.user.login, self.user.password, self.user.e_mail)
-        self.assertEqual(resp.status_code, 500)
+        self.assertEqual(resp.status_code, 409)
+        resp1 = register(self.user.login, self.user.password, "invalid@gmail.co")
+        self.assertEqual(resp1.status_code, 400, "Неверный email")
+        self.assertEqual(resp1.headers["X-Error-Message"], "invalid_email", "Сообщение неверный email")
+
 
     def test_3_auth(self):
         """
