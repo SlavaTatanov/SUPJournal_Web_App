@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify, request, Response
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy.exc import IntegrityError
-from SUPJournal.database.models import User
+from SUPJournal.database.models import User, Workout
 from SUPJournal.database.database import db
 from SUPJournal.tools.email_check import check_email
 
@@ -87,7 +87,7 @@ def mobile_register():
                                      user=login,
                                      user_id=user.user_id,
                                      msg="Успешная регистрация").to_json()
-    except IntegrityError:
+    except IntegrityError as e:
         return Response(status=409, headers={ERROR_HEADER: ERROR["incorrect_user"]})
 
 @bp.route("/check", methods=["GET"])
@@ -133,6 +133,22 @@ def mobile_change_password():
             return ResponseBodyInterface(msg="Пароль успешно изменен").to_json()
         elif not check_password_hash(user_query.pass_, password):
             return Response(status=401, headers={ERROR_HEADER: ERROR["incorrect_password"]})
+
+    return Response(status=401, headers={ERROR_HEADER: ERROR["access_denied"]})
+
+@bp.route("/create_training", methods=["POST"])
+@jwt_required()
+def mobile_create_training():
+    """
+    Заготовка для создания тренировки
+    """
+    owner = request.json["user"]
+    user = User.query.filter_by(login=owner).first()
+    if get_jwt_identity() == user.login:
+        workout = Workout(owner_id=user.user_id)
+        db.session.add(workout)
+        db.session.commit()
+        return Response(status=200)
 
     return Response(status=401, headers={ERROR_HEADER: ERROR["access_denied"]})
 

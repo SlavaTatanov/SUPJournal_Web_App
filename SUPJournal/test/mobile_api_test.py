@@ -25,6 +25,14 @@ def change_password(user: str,password: str, new_password: str, token: str):
                         json={"user": user, "password": password, "new_password": new_password})
     return req
 
+
+def create_training(token, login):
+    req = requests.post(f"{URL}/api/mobile/create_training",
+                        headers={"Authorization": f"Bearer {token}"},
+                        json={"user": login})
+    return req
+
+
 def get_training(token):
     req = requests.get(f"{URL}/api/mobile/get_training",
                        params={"training_id": "123"},
@@ -56,7 +64,7 @@ class MobileApiTest(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.user = User("IvanIvanovich", "test_password", "test@mail.world")
 
-    def test_1_register(self):
+    def test_001_register(self):
         """
         Регистрация нового пользователя
         """
@@ -65,7 +73,7 @@ class MobileApiTest(unittest.TestCase):
         self.assertEqual(self.user.token, None, "Проверка отсутствия токена перед записью")
         self.user.token = resp.json()["token"]
 
-    def test_2_err_register(self):
+    def test_002_err_register(self):
         """
         Ошибочные регистрации
         """
@@ -76,7 +84,7 @@ class MobileApiTest(unittest.TestCase):
         self.assertEqual(resp1.headers["X-Error-Message"], "invalid_email", "Сообщение неверный email")
 
 
-    def test_3_auth(self):
+    def test_003_auth(self):
         """
         Авторизация юзера
         """
@@ -85,7 +93,7 @@ class MobileApiTest(unittest.TestCase):
         self.assertEqual(self.user.login, resp.json()["user"], "Проверка что пришел user")
         self.assertIsNotNone(resp.json()["user_id"], "Проверка что пришел user_id")
 
-    def test_4_auth_err(self):
+    def test_004_auth_err(self):
         """
         Проверка не успешных авторизаций
         """
@@ -96,14 +104,14 @@ class MobileApiTest(unittest.TestCase):
         self.assertEqual(resp2.status_code, 401, "Статус код, неверный пароль")
         self.assertEqual(resp2.headers["X-Error-Message"], "incorrect_password", "Заголовок, не верный пароль")
 
-    def test_5_check(self):
+    def test_005_check(self):
         """
         Проверка токена
         """
         resp = check(self.user.token, self.user.login)
         self.assertEqual(resp.status_code, 200, "Статус код, проверка токена")
 
-    def test_6_err_check(self):
+    def test_006_err_check(self):
         """
         Неуспешные проверки токена
         """
@@ -116,7 +124,7 @@ class MobileApiTest(unittest.TestCase):
         self.assertEqual(resp2.status_code, 403, "Статус код неверный токен для этого пользователя")
         self.assertEqual(resp2.headers["X-Error-Message"], "access_denied", "Сообщение в заголовке что доступа нет")
 
-    def test_7_change_pass(self):
+    def test_007_change_pass(self):
         """
         Проверка смены пароля
         """
@@ -127,7 +135,7 @@ class MobileApiTest(unittest.TestCase):
         resp2 = auth(self.user.login, self.user.password)
         self.assertEqual(resp2.status_code, 200, "Авторизация с новым паролем")
 
-    def test_8_err_change_pass(self):
+    def test_008_err_change_pass(self):
         """
         Неуспешная смена пароля
         """
@@ -142,7 +150,15 @@ class MobileApiTest(unittest.TestCase):
         self.assertEqual(resp2.json()["msg"], "Token has expired", "Сообщение о просроченном токене")
 
 
-    def test_9_delete_user(self):
+    def test_009_create_training(self):
+        """
+        Создание тренировки
+        """
+        resp = create_training(self.user.token, self.user.login)
+        self.assertEqual(resp.status_code, 200, "Статус код, создание тренировки")
+
+
+    def test_010_delete_user(self):
         """
         Удаление пользователя
         """

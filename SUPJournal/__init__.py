@@ -1,6 +1,7 @@
 from flask import Flask
 from SUPJournal.database.database import db, URI
 from flask_jwt_extended import JWTManager
+from SUPJournal.database.models import User, Workout
 
 def create_app():
     app = Flask(__name__)
