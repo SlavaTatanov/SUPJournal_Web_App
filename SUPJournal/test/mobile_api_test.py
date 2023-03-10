@@ -27,10 +27,11 @@ def change_password(user: str,password: str, new_password: str, token: str):
 
 
 def create_training(token, login):
-    req = requests.post(f"{URL}/api/mobile/create_training",
-                        headers={"Authorization": f"Bearer {token}"},
-                        json={"user": login})
-    return req
+    with open("test.gpx", "rb") as gpx_file:
+        req = requests.post(f"{URL}/api/mobile/create_training",
+                            headers={"Authorization": f"Bearer {token}", "X-User": login},
+                            files={"gpx": gpx_file})
+        return req
 
 
 def get_training(token):

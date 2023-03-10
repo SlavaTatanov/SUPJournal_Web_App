@@ -1,6 +1,8 @@
 """
 API для общения мобильного приложения с сервером.
 """
+import json
+
 from flask import Blueprint, jsonify, request, Response
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -142,12 +144,13 @@ def mobile_create_training():
     """
     Заготовка для создания тренировки
     """
-    owner = request.json["user"]
+    owner = request.headers.get("X-User")
     user = User.query.filter_by(login=owner).first()
     if get_jwt_identity() == user.login:
-        workout = Workout(owner_id=user.user_id)
+        workout = Workout(owner_id=user.user_id, gpx=request.files["gpx"].read())
         db.session.add(workout)
         db.session.commit()
+
         return Response(status=200)
 
     return Response(status=401, headers={ERROR_HEADER: ERROR["access_denied"]})
