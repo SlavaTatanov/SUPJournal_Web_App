@@ -12,6 +12,7 @@
       <a class="dropdown-toggl" role="button" data-bs-toggle="dropdown" href="#">{{user}}</a>
       <ul class="dropdown-menu dropdown-menu-dark">
         <li><a class="dropdown-item" href="{{url_for('index.profile', username=g.user['login'])}}">Профиль</a></li>
+        <li><a class="dropdown-item" href="{{url_for('index.trainings', username=g.user['login'])}}">Тренировки</a></li>
         <li><a class="dropdown-item" href="{{url_for('auth.logout')}}">Выйти</a></li>
       </ul>
     </div>

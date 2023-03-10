@@ -62,6 +62,7 @@ def login():
             session["user_id"] = query.user_id
             return redirect(url_for("index.index"))
 
+        flash(error)
     return render_template("auth/login.html")
 
 @bp.route("/logout")

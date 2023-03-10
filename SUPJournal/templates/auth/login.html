@@ -4,6 +4,11 @@
         <div style="margin: 5%;">
             <form method="POST">
                 <legend>Авторизация</legend>
+                <div style="height: 30px;">
+                  {% for message in get_flashed_messages() %}
+                    <div>{{ message }}</div>
+                  {% endfor %}
+                </div>
                 <div class="mb-3" style="padding-top: 3%;">
                   <label for="exampleInputEmail1" class="form-label">Логин</label>
                   <input class="form-control" name="login">
