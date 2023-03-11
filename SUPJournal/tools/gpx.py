@@ -7,7 +7,7 @@ from geopy.distance import geodesic as gd
 
 
 class GpxFile:
-    def __init__(self, file: str):
+    def __init__(self, file):
         self.__gpx = self.gpx_parser(file)
         self.coord = self.get_coord()
         self.time_points = self.get_time_points()
@@ -24,8 +24,7 @@ class GpxFile:
         """
         Базовый метод, выполняет парсинг гпх файла
         """
-        with open(file, "r") as gpx_file:
-            gpx = gpxpy.parse(gpx_file)
+        gpx = gpxpy.parse(file)
         return gpx
 
     def get_coord(self):
@@ -100,8 +99,8 @@ class GpxFile:
             folium.vector_layers.Marker(pt["coord"], tooltip=inf).add_to(my_map)
         return my_map
 
-    def save_map(self, file_name):
-        self.map.save(file_name)
+    def save_map(self):
+        return self.map.save()
 
     def get_time_points(self):
         time_points = []
@@ -128,6 +127,9 @@ class GpxFile:
         for hr, cor, ind in zip(hours, hours_coord, index):
             info.append({"hour": hr, "coord": cor, "ind": ind})
         return info
+
+    def get_root_map(self):
+        return self.map.get_root().render()
 
 
 if __name__ == "__main__":

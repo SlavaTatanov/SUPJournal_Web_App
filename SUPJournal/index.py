@@ -1,4 +1,7 @@
 from flask import Blueprint, render_template, g, redirect, url_for, session
+import io
+from SUPJournal.tools.gpx import GpxFile
+from SUPJournal.database.models import Workout
 
 from SUPJournal.database.models import User
 
@@ -28,3 +31,12 @@ def profile(username):
 def trainings(username):
     if username == g.user.login:
         return "Тренировки тут"
+
+@bp.route("/<username>/trainings/<training_id>")
+def training(username, training_id):
+    if username == g.user.login:
+        owner_id = g.user.user_id
+        owner_training = Workout.query.filter_by(owner_id=owner_id, training_id=training_id).first()
+        training_map = owner_training.gpx
+        tr = GpxFile(io.BytesIO(training_map))
+        return render_template("training.html", dst=tr.dist, tm=tr.time, map_html=tr.get_root_map(), user=g.user.login)

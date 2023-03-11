@@ -3,8 +3,8 @@
 {% block training_body %}
 <div style="background-color: white; width: 80%; height: 80%; border-radius: 20px; top: 45%; left: 50%; transform: translate(-50%, -50%); position: relative;">
     <div style="padding: 2%; width: 100%; height: 100%; display: flex;"  >
-      <iframe class="map" width="70%" height="100%" style="border-radius: 10px;" src="/map"></iframe>
-      <div style="height: 100%; margin-left: auto; margin-right: 0; text-align: left;">
+      <div style="width: 70%; height: 100%; border-radius: 10px;"> {{ map_html | safe }} </div>
+      <div style="height: 100%; margin-right: auto; margin-left: 30px;">
         <h3>Данные о тренировке</h3>
         <h5>Расстояние {{dst}}</h5>
         <h5>Время {{tm}}</h5>
