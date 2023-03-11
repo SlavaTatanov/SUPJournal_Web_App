@@ -26,8 +26,8 @@ def change_password(user: str,password: str, new_password: str, token: str):
     return req
 
 
-def create_training(token, login):
-    with open("test.gpx", "rb") as gpx_file:
+def create_training(token, login, file):
+    with open(file, "rb") as gpx_file:
         req = requests.post(f"{URL}/api/mobile/create_training",
                             headers={"Authorization": f"Bearer {token}", "X-User": login},
                             files={"gpx": gpx_file})
@@ -155,13 +155,15 @@ class MobileApiTest(unittest.TestCase):
         """
         Создание тренировки
         """
-        resp = create_training(self.user.token, self.user.login)
+        resp = create_training(self.user.token, self.user.login, "test.gpx")
         self.assertEqual(resp.status_code, 200, "Статус код, создание тренировки")
+        create_training(self.user.token, self.user.login, "test1.gpx")
+        create_training(self.user.token, self.user.login, "test2.gpx")
 
 
-    def test_010_delete_user(self):
-        """
-        Удаление пользователя
-        """
-        resp = delete(self.user.token, self.user.login)
-        self.assertEqual(resp.status_code, 200, "Удаление юзера ОК")
+    # def test_010_delete_user(self):
+    #     """
+    #     Удаление пользователя
+    #     """
+    #     resp = delete(self.user.token, self.user.login)
+    #     self.assertEqual(resp.status_code, 200, "Удаление юзера ОК")

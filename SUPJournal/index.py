@@ -30,7 +30,8 @@ def profile(username):
 @bp.route("/<username>/trainings")
 def trainings(username):
     if username == g.user.login:
-        return "Тренировки тут"
+        owner_trainings = Workout.query.filter_by(owner_id=g.user.user_id).all()
+        return render_template("trainings.html", user=g.user.login, trainings=owner_trainings)
 
 @bp.route("/<username>/trainings/<training_id>")
 def training(username, training_id):
