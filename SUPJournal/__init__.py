@@ -1,7 +1,9 @@
 from flask import Flask
+from SUPJournal.tools.cache import cache
 from SUPJournal.database.database import db, URI
 from flask_jwt_extended import JWTManager
 from SUPJournal.database.models import User, Workout
+
 
 def create_app():
     app = Flask(__name__)
@@ -9,6 +11,7 @@ def create_app():
     app.config["SQLALCHEMY_DATABASE_URI"] = URI
     app.config["JWT_SECRET_KEY"] = "dev"
     JWTManager(app)
+    cache.init_app(app)
 
     db.init_app(app)
     with app.app_context():

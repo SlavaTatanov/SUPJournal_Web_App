@@ -2,10 +2,21 @@ from flask import Blueprint, render_template, g, redirect, url_for, session
 import io
 from SUPJournal.tools.gpx import GpxFile
 from SUPJournal.database.models import Workout
-
+from SUPJournal.tools.cache import cache
 from SUPJournal.database.models import User
 
 bp = Blueprint("index", __name__)
+
+@cache.memoize(timeout=120)
+def get_user(user_id):
+    """
+    Если пользователя нет в g, делаем запрос в БД, результат кешируем на 2 минуты,
+    чтобы каждый http запрос не делать запрос в БД, а брать его из кеша
+    """
+    user = User.query.filter_by(user_id=user_id).first()
+    print("Запрос в БД")
+    return user
+
 
 @bp.before_app_request
 def load_user():
@@ -14,7 +25,7 @@ def load_user():
     if user_id is None:
         g.user = None
     else:
-        g.user = User.query.filter_by(user_id=user_id).first()
+        get_user(user_id)
 
 @bp.route("/")
 def index():
@@ -41,3 +52,8 @@ def training(username, training_id):
         training_map = owner_training.gpx
         tr = GpxFile(io.BytesIO(training_map))
         return render_template("training.html", dst=tr.dist, tm=tr.time, map_html=tr.get_root_map(), user=g.user.login)
+
+@bp.route("/<username>/settings")
+def user_settings(username):
+    if username == g.user.login:
+        return render_template("settings.html", user=g.user.login)

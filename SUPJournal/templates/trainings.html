@@ -11,12 +11,10 @@
         </thead>
         <tbody>
         {% for training in trainings %}
-        <tr>
+        <tr onclick="window.location.href='{{ url_for('index.training', username=g.user['login'], training_id=training.training_id) }}';">
             
                 <th scope="row">
-                    <a href="{{ url_for('index.training', username=g.user['login'], training_id=training.training_id) }}">
-                        {{training.training_id}}
-                    </a>
+                {{training.training_id}}
                 </th>
                 <td>{{training.training_id}}</td>
                 <td>Otto</td>
