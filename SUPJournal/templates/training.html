@@ -6,8 +6,9 @@
       <div style="width: 70%; height: 100%; border-radius: 10px;"> {{ map_html | safe }} </div>
       <div style="height: 100%; margin-right: auto; margin-left: 30px;">
         <h3>Данные о тренировке</h3>
-        <h5>Расстояние {{dst}}</h5>
-        <h5>Время {{tm}}</h5>
+        <h4>{{tr.format_date}} {{tr.training_date.time()}}</h4>
+        <h5>Расстояние {{tr.dist}}</h5>
+        <h5>Время {{tr.time}}</h5>
       </div>
     </div>
     

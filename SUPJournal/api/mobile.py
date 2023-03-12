@@ -1,8 +1,6 @@
 """
 API для общения мобильного приложения с сервером.
 """
-import json
-
 from flask import Blueprint, jsonify, request, Response
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -10,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from SUPJournal.database.models import User, Workout
 from SUPJournal.database.database import db
 from SUPJournal.tools.email_check import check_email
+from SUPJournal.tools.gpx import GpxFile
 
 bp = Blueprint("api_mobile", __name__, url_prefix="/api/mobile")
 
@@ -142,12 +141,19 @@ def mobile_change_password():
 @jwt_required()
 def mobile_create_training():
     """
-    Заготовка для создания тренировки
+    Принимаем GPX файл, парсим его, достаем дату, дистанцию
+    Создаем ORM объект и отправляем в БД
     """
     owner = request.headers.get("X-User")
     user = User.query.filter_by(login=owner).first()
     if get_jwt_identity() == user.login:
-        workout = Workout(owner_id=user.user_id, gpx=request.files["gpx"].read())
+        gpx = request.files["gpx"].read()
+        training = GpxFile(gpx)
+        workout = Workout(owner_id=user.user_id,
+                          date=training.training_date,
+                          dist=training.dist,
+                          tr_time=training.time,
+                          gpx=gpx)
         db.session.add(workout)
         db.session.commit()
 

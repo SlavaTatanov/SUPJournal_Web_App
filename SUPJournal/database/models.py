@@ -16,6 +16,9 @@ class Workout(db.Model):
 
     training_id = db.Column(db.Integer, primary_key=True)
     owner_id = db.Column(db.Integer, db.ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
+    date = db.Column(db.DateTime, nullable=False)
+    dist = db.Column(db.String(64), nullable=False)
+    tr_time = db.Column(db.Interval, nullable=False)
     gpx = db.Column(db.LargeBinary, nullable=False)
 
 

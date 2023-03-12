@@ -20,6 +20,10 @@ def get_user(user_id):
 
 @bp.before_app_request
 def load_user():
+    """
+    Смотрим сессию браузера, берем оттуда user_id и по нему делаем запрос в БД
+    Если в сессии нет user_id грузим в g.user -> None
+    """
     user_id = session.get("user_id")
 
     if user_id is None:
@@ -35,25 +39,36 @@ def index():
 
 @bp.route("/<username>")
 def profile(username):
+    if g.user is None:
+        return redirect(url_for("auth.login"))
     if username == g.user.login:
         return render_template("profile.html", user=g.user.login)
 
 @bp.route("/<username>/trainings")
 def trainings(username):
+    if g.user is None:
+        return redirect(url_for("auth.login"))
     if username == g.user.login:
         owner_trainings = Workout.query.filter_by(owner_id=g.user.user_id).all()
         return render_template("trainings.html", user=g.user.login, trainings=owner_trainings)
 
 @bp.route("/<username>/trainings/<training_id>")
 def training(username, training_id):
+    if g.user is None:
+        return redirect(url_for("auth.login"))
     if username == g.user.login:
         owner_id = g.user.user_id
         owner_training = Workout.query.filter_by(owner_id=owner_id, training_id=training_id).first()
         training_map = owner_training.gpx
         tr = GpxFile(io.BytesIO(training_map))
-        return render_template("training.html", dst=tr.dist, tm=tr.time, map_html=tr.get_root_map(), user=g.user.login)
+        return render_template("training.html",
+                               tr=tr,
+                               map_html=tr.get_root_map(),
+                               user=g.user.login)
 
 @bp.route("/<username>/settings")
 def user_settings(username):
+    if g.user is None:
+        return redirect(url_for("auth.login"))
     if username == g.user.login:
         return render_template("settings.html", user=g.user.login)
