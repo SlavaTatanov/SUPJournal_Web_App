@@ -9,6 +9,10 @@ from geopy.distance import geodesic as gd
 locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
 
 class GpxFile:
+    """
+    Связующее GPX парсера и Folium для отрисовки карты,
+    хранит в себе параметры тренировки и саму карту, созданную Folium
+    """
     def __init__(self, file):
         self.__gpx = self.gpx_parser(file)
         self._coord = self.get_coord()
@@ -133,10 +137,8 @@ class GpxFile:
         return info
 
     def get_root_map(self):
+        """
+        Создает карту которую можно передать в HTML шаблон через Jinja
+        """
         return self.map.get_root().render()
 
-
-if __name__ == "__main__":
-    test = GpxFile("test.gpx")
-    print(test.weather_info)
-    test.save_map("map.html")
