@@ -1,6 +1,11 @@
 {% extends 'base_authorise.html' %}
 {% block body %}
  <div class="supbasediv">
-
+    <h1 style="text-align: center;">Пользователь {{user}}</h1>
+    <hr class="my-4">
+    <div class="form-group">
+      <label for="exampleInputPassword1">Рост</label>
+      <input type="number" class="form-control" id="height" placeholder="-">
+    </div>
  </div>   
 {% endblock %}

@@ -3,6 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from SUPJournal.database.database import db
 from SUPJournal.database.models import User
 from sqlalchemy import exc
+from functools import wraps
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -69,3 +70,14 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("auth.login"))
+
+def login_required(view):
+    """
+    Проверяет что юзер есть в сессии
+    """
+    @wraps(view)
+    def wrapped_view(**kwargs):
+        if g.user is None:
+            return redirect(url_for("auth.login"))
+        return view(**kwargs)
+    return wrapped_view

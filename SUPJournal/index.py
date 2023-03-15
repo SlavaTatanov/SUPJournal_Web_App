@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, g, redirect, url_for, session
 import io
+from SUPJournal.auth import login_required
 from SUPJournal.tools.gpx import GpxFile
 from SUPJournal.database.models import Workout
 from SUPJournal.tools.cache import cache
@@ -32,30 +33,26 @@ def load_user():
         get_user(user_id)
 
 @bp.route("/")
+@login_required
 def index():
-    if g.user is None:
-        return redirect(url_for("auth.login"))
     return render_template("index.html", user=g.user.login)
 
 @bp.route("/<username>")
+@login_required
 def profile(username):
-    if g.user is None:
-        return redirect(url_for("auth.login"))
     if username == g.user.login:
         return render_template("profile.html", user=g.user.login)
 
 @bp.route("/<username>/trainings")
+@login_required
 def trainings(username):
-    if g.user is None:
-        return redirect(url_for("auth.login"))
     if username == g.user.login:
         owner_trainings = Workout.query.filter_by(owner_id=g.user.user_id).all()
         return render_template("trainings.html", user=g.user.login, trainings=owner_trainings)
 
 @bp.route("/<username>/trainings/<training_id>")
+@login_required
 def training(username, training_id):
-    if g.user is None:
-        return redirect(url_for("auth.login"))
     if username == g.user.login:
         owner_id = g.user.user_id
         owner_training = Workout.query.filter_by(owner_id=owner_id, training_id=training_id).first()
@@ -67,8 +64,7 @@ def training(username, training_id):
                                user=g.user.login)
 
 @bp.route("/<username>/settings")
+@login_required
 def user_settings(username):
-    if g.user is None:
-        return redirect(url_for("auth.login"))
     if username == g.user.login:
         return render_template("settings.html", user=g.user.login)
