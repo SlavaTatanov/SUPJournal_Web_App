@@ -55,7 +55,7 @@ def trainings(username):
 def training(username, training_id):
     if username == g.user.login:
         owner_id = g.user.user_id
-        owner_training = Workout.query.filter_by(owner_id=owner_id, training_id=training_id).first()
+        owner_training = Workout.query.filter_by(owner_id=owner_id, id=training_id).first()
         training_map = owner_training.gpx
         tr = GpxFile(io.BytesIO(training_map))
         return render_template("training.html",

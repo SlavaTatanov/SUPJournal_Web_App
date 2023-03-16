@@ -11,7 +11,7 @@
         </thead>
         <tbody>
         {% for training in trainings %}
-        <tr onclick="window.location.href='{{ url_for('index.training', username=g.user['login'], training_id=training.training_id) }}';">
+        <tr onclick="window.location.href='{{ url_for('index.training', username=g.user['login'], training_id=training.id) }}';">
             
                 <th scope="row">
                 {{training.date.date()}}
