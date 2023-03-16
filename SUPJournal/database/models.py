@@ -32,7 +32,9 @@ class Equipment(UserData):
     """
     __abstract__ = True
 
-    name = db.Column(db.String, nullable=False)
+    manufacturer = db.Column(db.String, nullable=True)
+    model_name = db.Column(db.String, nullable=True)
+    km = db.Column(db.Float)
 
 
 class Workout(UserData):
@@ -52,6 +54,13 @@ class SupBoard(Equipment):
     САП-борд пользователя
     """
     __tablename__ = "sup_boards"
+
+    width = db.Column(db.Float)
+    length = db.Column(db.Float)
+
+
+class Paddle(Equipment):
+    __tablename__ = "paddle"
 
 
 class UserProfile(db.Model):
