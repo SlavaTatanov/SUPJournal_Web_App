@@ -5,7 +5,9 @@ import json
 import folium
 import locale
 from geopy.distance import geodesic as gd
-from bokeh.plotting import figure, show
+from bokeh.plotting import figure
+from bokeh.resources import CDN
+from bokeh.embed import components
 from statistics import mean
 
 locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
@@ -15,6 +17,10 @@ class GpxFile:
     Связующее GPX парсера и Folium для отрисовки карты,
     хранит в себе параметры тренировки и саму карту, созданную Folium
     """
+
+    SPEED_KM_PER_HOUR = 3.6
+    SPEED_KNOT_PER_HOUR = 1.94
+
     def __init__(self, file):
         self.__gpx = self.gpx_parser(file)
         self._coord_and_speed = self.get_coord()
@@ -30,9 +36,9 @@ class GpxFile:
         self.dist = str(round((self.__gpx.tracks[0].segments[0].length_2d() / 1000), 2)) + " км"
         self.format_date = self.training_date.date().strftime('%d %B %Y')
         avg_speed = mean([spd[1] for spd in self._coord_and_speed if spd[1] is not None])
-        self.avg_speed = round(avg_speed, 2)
-        print(self.avg_speed)
-        self.speed_plot = self.create_speed_plot()
+        self.avg_speed = round(avg_speed * self.SPEED_KM_PER_HOUR, 2)
+        self.avg_speed_knot = round(avg_speed * self.SPEED_KNOT_PER_HOUR, 2)
+        self.speed_plot = self.create_speed_plot(self.SPEED_KNOT_PER_HOUR)
 
     @staticmethod
     def gpx_parser(file):
@@ -56,7 +62,6 @@ class GpxFile:
                     speed = point.speed_between(last_point)
                     if speed is not None:
                         speed = round(speed, 2)
-                        speed *= 3.6
                     gpx_data.append(((point.latitude, point.longitude), speed))
                     last_point = gpxpy.gpx.GPXTrackPoint(point.latitude, point.longitude, time=point.time)
         return gpx_data
@@ -154,9 +159,15 @@ class GpxFile:
         """
         return self.map.get_root().render()
 
-    def create_speed_plot(self):
-        speeds = [spd[1] for spd in self._coord_and_speed]
-        plot = figure(title="Скорость", y_axis_label="км/ч")
-        plot.line(list(range(len(speeds))), speeds)
-        show(plot)
-        return "Plot"
+    def create_speed_plot(self, factor: float):
+        speeds = [spd[1] * factor for spd in self._coord_and_speed if spd[1] is not None]
+        units = None
+        match factor:
+            case self.SPEED_KNOT_PER_HOUR:
+                units = "узлов/ч"
+            case self.SPEED_KM_PER_HOUR:
+                units = "км/ч"
+        plot = figure(title="Скорость", y_axis_label=units, width=350, height=350)
+        plot.line(list(range(len(speeds))), speeds, line_width=3, line_alpha=0.8)
+        script, div = components(plot)
+        return {"script": script, "div": div, "css": CDN.render_css(), "res": CDN.render()}
