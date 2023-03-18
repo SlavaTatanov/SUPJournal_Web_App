@@ -5,6 +5,8 @@ import json
 import folium
 import locale
 from geopy.distance import geodesic as gd
+from bokeh.plotting import figure, show
+from statistics import mean
 
 locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
 
@@ -15,7 +17,8 @@ class GpxFile:
     """
     def __init__(self, file):
         self.__gpx = self.gpx_parser(file)
-        self._coord = self.get_coord()
+        self._coord_and_speed = self.get_coord()
+        self._only_coord = [point[0] for point in self._coord_and_speed]
         self.time_points = self.get_time_points()
         self.training_date = self.time_points[0]
         self.time = self.time_points[-1] - self.time_points[0]
@@ -26,6 +29,10 @@ class GpxFile:
         self.map = self.create_map()
         self.dist = str(round((self.__gpx.tracks[0].segments[0].length_2d() / 1000), 2)) + " км"
         self.format_date = self.training_date.date().strftime('%d %B %Y')
+        avg_speed = mean([spd[1] for spd in self._coord_and_speed if spd[1] is not None])
+        self.avg_speed = round(avg_speed, 2)
+        print(self.avg_speed)
+        self.speed_plot = self.create_speed_plot()
 
     @staticmethod
     def gpx_parser(file):
@@ -40,10 +47,18 @@ class GpxFile:
         Составляет список координат
         """
         gpx_data = []
+        last_point = None
         for tracks in self.__gpx.tracks:
             for segments in tracks.segments:
                 for point in segments.points:
-                    gpx_data.append((point.latitude, point.longitude))
+                    if last_point is None:
+                        last_point = gpxpy.gpx.GPXTrackPoint(point.latitude, point.longitude, time=point.time)
+                    speed = point.speed_between(last_point)
+                    if speed is not None:
+                        speed = round(speed, 2)
+                        speed *= 3.6
+                    gpx_data.append(((point.latitude, point.longitude), speed))
+                    last_point = gpxpy.gpx.GPXTrackPoint(point.latitude, point.longitude, time=point.time)
         return gpx_data
 
     def get_time(self):
@@ -56,8 +71,8 @@ class GpxFile:
     def __get_mid_time(self):
         med = int(len(self.__gpx.tracks[0].segments[0].points) / 2)
         info = self.time_points[med]
-        coord = (round(self._coord[med][0], 4),
-                 round(self._coord[med][1], 4))
+        coord = (round(self._coord_and_speed[0][med][0], 4),
+                 round(self._coord_and_speed[0][med][1], 4))
         date = info.date()
         return {"index": info.hour, "coord": coord, "date": str(date)}
 
@@ -73,8 +88,8 @@ class GpxFile:
         return weather_info
 
     def get_med_min_max_point(self):
-        lat = [item[0] for item in self._coord]
-        lon = [item[1] for item in self._coord]
+        lat = [item[0][0] for item in self._coord_and_speed]
+        lon = [item[0][1] for item in self._coord_and_speed]
         lat = {"min": min(lat), "max": max(lat)}
         lon = {"min": min(lon), "max": max(lon)}
         min_point = (lat["min"], lon["min"])
@@ -101,14 +116,11 @@ class GpxFile:
 
     def create_map(self):
         my_map = folium.Map(location=self.med_min_max_point["med_point"], zoom_start=self.zoom)
-        folium.vector_layers.PolyLine(self._coord).add_to(my_map)
+        folium.vector_layers.PolyLine(self._only_coord).add_to(my_map)
         for pt, tm in zip(self.weather_info, self.weather.values()):
             inf = f"Время - {pt['hour']}:00 ::: Температура {tm} °C"
             folium.vector_layers.Marker(pt["coord"], tooltip=inf).add_to(my_map)
         return my_map
-
-    def save_map(self):
-        return self.map.save()
 
     def get_time_points(self):
         time_points = []
@@ -129,7 +141,7 @@ class GpxFile:
             if self.time_points[ind].hour != self.time_points[ind-1].hour:
                 index.append(ind)
         for ind in index:
-            hours_coord.append(self._coord[ind])
+            hours_coord.append(self._coord_and_speed[ind][0])
         hours = list({hour.hour for hour in self.time_points})
         info = []
         for hr, cor, ind in zip(hours, hours_coord, index):
@@ -142,3 +154,9 @@ class GpxFile:
         """
         return self.map.get_root().render()
 
+    def create_speed_plot(self):
+        speeds = [spd[1] for spd in self._coord_and_speed]
+        plot = figure(title="Скорость", y_axis_label="км/ч")
+        plot.line(list(range(len(speeds))), speeds)
+        show(plot)
+        return "Plot"
