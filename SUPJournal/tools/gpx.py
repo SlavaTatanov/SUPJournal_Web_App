@@ -6,6 +6,7 @@ import folium
 import locale
 from geopy.distance import geodesic as gd
 from bokeh.plotting import figure
+from bokeh.models import HoverTool
 from bokeh.resources import CDN
 from bokeh.embed import components
 from statistics import mean
@@ -167,7 +168,31 @@ class GpxFile:
                 units = "узлов/ч"
             case self.SPEED_KM_PER_HOUR:
                 units = "км/ч"
-        plot = figure(title="Скорость", y_axis_label=units, width=350, height=350)
-        plot.line(list(range(len(speeds))), speeds, line_width=3, line_alpha=0.8)
+        plot = figure(title="Скорость", y_axis_label=units, width=380, height=350)
+        if len(speeds) > 100:
+            smooth_line = self.smooth_plot_line(speeds, len(speeds) // 100)
+        else:
+            smooth_line = speeds
+        hover = HoverTool(tooltips=[("Скорость", "@y{0.00}" + units)], mode='vline')
+        plot.add_tools(hover)
+        plot.line(list(range(len(smooth_line))), smooth_line, line_width=3, line_alpha=0.8)
         script, div = components(plot)
         return {"script": script, "div": div, "css": CDN.render_css(), "res": CDN.render()}
+
+    @staticmethod
+    def smooth_plot_line(line_points: list, smooth_val: int) -> list:
+        """
+        Расчет скользящего среднего, сглаживает значения точек на графике
+        """
+        counter = 0
+        res_points_list = []
+        avg_stack = []
+        for it in line_points:
+            if counter > smooth_val:
+                res_points_list.append(mean(avg_stack))
+                counter = 0
+                avg_stack = [it]
+            else:
+                avg_stack.append(it)
+                counter += 1
+        return res_points_list
