@@ -1,0 +1,13 @@
+{% extends 'base_authorise.html' %}
+
+{% block body %}
+ <div class="supbasediv" style="align-items: center;">
+    <form class="form-group" method="post" enctype="multipart/form-data">
+        <div class="custom-file">
+            <input type="file" class="custom-file-input" id="customFile" name="GPX">
+            <label class="custom-file-label" for="customFile">Choose file</label>
+        </div>
+        <input type="submit" class="btn btn-primary">Submit</button>
+    </form>  
+ </div>   
+{% endblock %}

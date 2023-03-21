@@ -1,10 +1,12 @@
-from flask import Blueprint, render_template, g, redirect, url_for, session
+from flask import Blueprint, render_template, g, redirect, url_for, session, request
 import io
 from SUPJournal.auth import login_required
 from SUPJournal.tools.gpx import GpxFile
 from SUPJournal.database.models import Workout
 from SUPJournal.tools.cache import cache
 from SUPJournal.database.models import User
+from SUPJournal.database.database import db
+from SUPJournal.database.db_fun import add_training_to_bd
 
 bp = Blueprint("index", __name__)
 
@@ -68,3 +70,12 @@ def training(username, training_id):
 def user_settings(username):
     if username == g.user.login:
         return render_template("settings.html", user=g.user.login)
+
+@bp.route("/<username>/add_training", methods=["GET", "POST"])
+@login_required
+def add_training(username):
+    if username == g.user.login:
+        if request.method == "POST":
+            gpx = request.files["GPX"].read()
+            add_training_to_bd(gpx, g.user.user_id)
+        return render_template("add_training.html", user=g.user.login)

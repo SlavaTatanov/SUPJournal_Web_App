@@ -7,6 +7,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy.exc import IntegrityError
 from SUPJournal.database.models import User, Workout
 from SUPJournal.database.database import db
+from SUPJournal.database.db_fun import add_training_to_bd
 from SUPJournal.tools.email_check import check_email
 from SUPJournal.tools.gpx import GpxFile
 
@@ -148,15 +149,7 @@ def mobile_create_training():
     user = User.query.filter_by(login=owner).first()
     if get_jwt_identity() == user.login:
         gpx = request.files["gpx"].read()
-        training = GpxFile(gpx)
-        workout = Workout(owner_id=user.user_id,
-                          date=training.training_date,
-                          dist=training.dist,
-                          tr_time=training.time,
-                          gpx=gpx)
-        db.session.add(workout)
-        db.session.commit()
-
+        add_training_to_bd(gpx, user.user_id)
         return Response(status=200)
 
     return Response(status=401, headers={ERROR_HEADER: ERROR["access_denied"]})
