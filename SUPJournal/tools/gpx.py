@@ -122,6 +122,7 @@ class GpxFile:
 
     def create_map(self):
         my_map = folium.Map(location=self.med_min_max_point["med_point"], zoom_start=self.zoom)
+        my_map._id = "TrainingMap"
         folium.vector_layers.PolyLine(self._only_coord).add_to(my_map)
         for pt, tm in zip(self.weather_info, self.weather.values()):
             inf = f"Время - {pt['hour']}:00 ::: Температура {tm} °C"

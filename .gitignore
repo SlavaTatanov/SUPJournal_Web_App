@@ -4,4 +4,6 @@ SUPJournal/tools/test.gpx
 SUPJournal/tools/map.html
 SUPJournal/templates/map.html
 migrations/
-
+/package-lock.json
+/package.json
+/node_modules/
