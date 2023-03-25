@@ -10,6 +10,7 @@ from bokeh.models import HoverTool
 from bokeh.resources import CDN
 from bokeh.embed import components
 from statistics import mean
+from pympler import asizeof
 
 locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
 
@@ -25,7 +26,6 @@ class GpxFile:
     def __init__(self, file):
         self.__gpx = self.gpx_parser(file)
         self._coord_and_speed = self.get_coord()
-        self._only_coord = [point[0] for point in self._coord_and_speed]
         self.time_points = self.get_time_points()
         self.training_date = self.time_points[0]
         self.time = self.time_points[-1] - self.time_points[0]
@@ -36,10 +36,33 @@ class GpxFile:
         self.map = self.create_map()
         self.dist = str(round((self.__gpx.tracks[0].segments[0].length_2d() / 1000), 2)) + " км"
         self.format_date = self.training_date.date().strftime('%d %B %Y')
-        avg_speed = mean([spd[1] for spd in self._coord_and_speed if spd[1] is not None])
+        avg_speed = mean([spd["speed"] for spd in self._coord_and_speed if spd["speed"] is not None])
         self.avg_speed = round(avg_speed * self.SPEED_KM_PER_HOUR, 2)
         self.avg_speed_knot = round(avg_speed * self.SPEED_KNOT_PER_HOUR, 2)
         self.speed_plot = self.create_speed_plot(self.SPEED_KNOT_PER_HOUR)
+
+        # Чистим память от ненужных после вычислений объектов
+        del self.__gpx
+        del self._coord_and_speed
+        del self.time_points
+
+        # Смотрим сколько объект занимает в памяти, для тестов
+        # На проде можно закомментировать
+        # print(f"Размер объекта {self.get_size(self)}")
+        # print("-"*30)
+        # for key, value in self.__dict__.items():
+        #     print(f"{key} -> {self.get_size(value)}")
+        # print("-" * 30)
+
+    @staticmethod
+    def get_size(obj):
+        """
+        Служебный метод определения размера разных объектов
+        """
+        obj = asizeof.asizeof(obj)
+        obj = round(obj/(1024 * 1024), 2)
+        return f"{obj} Мб"
+
 
     @staticmethod
     def gpx_parser(file):
@@ -55,16 +78,28 @@ class GpxFile:
         """
         gpx_data = []
         last_point = None
+        last_time = None
+        delta_time_points = None
+        current_time = None
         for tracks in self.__gpx.tracks:
             for segments in tracks.segments:
                 for point in segments.points:
                     if last_point is None:
                         last_point = gpxpy.gpx.GPXTrackPoint(point.latitude, point.longitude, time=point.time)
+                        last_time = point.time
+                        delta_time_points = point.time - point.time
+                        current_time = delta_time_points
                     speed = point.speed_between(last_point)
+                    current_time += delta_time_points
                     if speed is not None:
                         speed = round(speed, 2)
-                    gpx_data.append(((point.latitude, point.longitude), speed))
+                    gpx_data.append({"coord": [point.latitude, point.longitude],
+                                     "speed": speed,
+                                     "time": current_time})
                     last_point = gpxpy.gpx.GPXTrackPoint(point.latitude, point.longitude, time=point.time)
+                    delta_time_points = point.time - last_time
+                    last_time = point.time
+        print(gpx_data)
         return gpx_data
 
     def get_time(self):
@@ -94,8 +129,8 @@ class GpxFile:
         return weather_info
 
     def get_med_min_max_point(self):
-        lat = [item[0][0] for item in self._coord_and_speed]
-        lon = [item[0][1] for item in self._coord_and_speed]
+        lat = [item["coord"][0] for item in self._coord_and_speed]
+        lon = [item["coord"][1] for item in self._coord_and_speed]
         lat = {"min": min(lat), "max": max(lat)}
         lon = {"min": min(lon), "max": max(lon)}
         min_point = (lat["min"], lon["min"])
@@ -123,7 +158,8 @@ class GpxFile:
     def create_map(self):
         my_map = folium.Map(location=self.med_min_max_point["med_point"], zoom_start=self.zoom)
         my_map._id = "TrainingMap"
-        folium.vector_layers.PolyLine(self._only_coord).add_to(my_map)
+        only_coord = [point["coord"] for point in self._coord_and_speed]
+        folium.vector_layers.PolyLine(only_coord).add_to(my_map)
         for pt, tm in zip(self.weather_info, self.weather.values()):
             inf = f"Время - {pt['hour']}:00 ::: Температура {tm} °C"
             folium.vector_layers.Marker(pt["coord"], tooltip=inf).add_to(my_map)
@@ -148,7 +184,7 @@ class GpxFile:
             if self.time_points[ind].hour != self.time_points[ind-1].hour:
                 index.append(ind)
         for ind in index:
-            hours_coord.append(self._coord_and_speed[ind][0])
+            hours_coord.append(self._coord_and_speed[ind]["coord"])
         hours = list({hour.hour for hour in self.time_points})
         info = []
         for hr, cor, ind in zip(hours, hours_coord, index):
@@ -162,38 +198,51 @@ class GpxFile:
         return self.map.get_root().render()
 
     def create_speed_plot(self, factor: float):
-        speeds = [spd[1] * factor for spd in self._coord_and_speed if spd[1] is not None]
+        """
+        Создает график, на вход принимает еденицы измерения и конвертирует значения скоростей
+        """
+        speeds = [spd["speed"] * factor for spd in self._coord_and_speed if spd["speed"] is not None]
         units = None
         match factor:
             case self.SPEED_KNOT_PER_HOUR:
                 units = "узлов/ч"
             case self.SPEED_KM_PER_HOUR:
                 units = "км/ч"
-        plot = figure(title="Скорость", y_axis_label=units, width=380, height=350)
+        plot = figure(title="Скорость", y_axis_label=units, x_axis_type="datetime", width=380, height=350)
         if len(speeds) > 100:
             smooth_line = self.smooth_plot_line(speeds, len(speeds) // 100)
         else:
-            smooth_line = speeds
+            smooth_line = self.smooth_plot_line(speeds, 1)
         hover = HoverTool(tooltips=[("Скорость", "@y{0.00}" + units)], mode='vline')
         plot.add_tools(hover)
-        plot.line(list(range(len(smooth_line))), smooth_line, line_width=3, line_alpha=0.8)
+        plot.line(
+            [it["time"] for it in smooth_line],
+            [it["speed"] for it in smooth_line],
+            line_width=3,
+            line_alpha=0.8
+        )
         script, div = components(plot)
         return {"script": script, "div": div, "css": CDN.render_css(), "res": CDN.render()}
 
-    @staticmethod
-    def smooth_plot_line(line_points: list, smooth_val: int) -> list:
+
+    def smooth_plot_line(self, line_points: list, smooth_val: int) -> list:
         """
         Расчет скользящего среднего, сглаживает значения точек на графике
         """
-        counter = 0
+        counter = 1
+        index_point = 0
         res_points_list = []
         avg_stack = []
         for it in line_points:
-            if counter > smooth_val:
-                res_points_list.append(mean(avg_stack))
+            if counter >= smooth_val:
+                res_points_list.append({
+                    "speed": mean(avg_stack),
+                    "time": self._coord_and_speed[index_point]["time"]
+                })
                 counter = 0
                 avg_stack = [it]
             else:
                 avg_stack.append(it)
                 counter += 1
+            index_point += 1
         return res_points_list
