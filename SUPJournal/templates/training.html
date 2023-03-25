@@ -22,9 +22,12 @@
         <h5>Средняя скорость: {{tr.avg_speed}} км/ч</h5>
         <h5>Средняя скорость: {{tr.avg_speed_knot}} узлов/ч</h5>
         <div class="bk-root" style="max-width: 350px; max-height: 350px;">
-          {{tr.speed_plot.div | safe}}
-          
+          {{tr.speed_plot.div | safe}} 
         </div>
+        <!--
+        <button class="btn-primary" onclick="showUserPoint([50.0, 60.0])">addPoint</button>
+        <button class="btn-primary" onclick="showUserPoint(null)">Null</button>
+        -->
       </div>
     </div>
     
