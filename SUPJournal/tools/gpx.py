@@ -6,9 +6,10 @@ import folium
 import locale
 from geopy.distance import geodesic as gd
 from bokeh.plotting import figure
-from bokeh.models import HoverTool
+from bokeh.models import HoverTool, CustomJS
 from bokeh.resources import CDN
 from bokeh.embed import components
+from bokeh.events import MouseMove
 from statistics import mean
 from pympler import asizeof
 
@@ -99,7 +100,6 @@ class GpxFile:
                     last_point = gpxpy.gpx.GPXTrackPoint(point.latitude, point.longitude, time=point.time)
                     delta_time_points = point.time - last_time
                     last_time = point.time
-        print(gpx_data)
         return gpx_data
 
     def get_time(self):
@@ -213,7 +213,22 @@ class GpxFile:
             smooth_line = self.smooth_plot_line(speeds, len(speeds) // 100)
         else:
             smooth_line = self.smooth_plot_line(speeds, 1)
-        hover = HoverTool(tooltips=[("Скорость", "@y{0.00}" + units)], mode='vline')
+
+        custom_js = CustomJS(args=dict(xr=plot.x_range,
+                                       data=smooth_line,
+                                       times=[it["time"] for it in smooth_line]),
+                             code="""
+          var ind = cb_data['index'].line_indices
+          console.log(ind)
+          console.log(data.length)
+          if (ind.length == 1) {
+            var coord = data[ind]["coord"]
+          } else {
+            var coord = null
+          }
+          showUserPoint(coord)
+        """)
+        hover = HoverTool(tooltips=[("Скорость", "@y{0.00}" + units)], mode='vline', callback=custom_js)
         plot.add_tools(hover)
         plot.line(
             [it["time"] for it in smooth_line],
@@ -237,7 +252,8 @@ class GpxFile:
             if counter >= smooth_val:
                 res_points_list.append({
                     "speed": mean(avg_stack),
-                    "time": self._coord_and_speed[index_point]["time"]
+                    "time": self._coord_and_speed[index_point]["time"],
+                    "coord": self._coord_and_speed[index_point]["coord"]
                 })
                 counter = 0
                 avg_stack = [it]
