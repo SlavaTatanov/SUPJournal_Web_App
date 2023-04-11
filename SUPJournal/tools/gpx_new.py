@@ -4,6 +4,9 @@ import gpxpy
 from folium import Map
 from typing import BinaryIO
 import httpx
+import time
+from SUPJournal.tools.gpx import GpxFile as OldGPXFile
+from geopy.distance import geodesic
 
 
 # Устанавливаем общее форматирование для даты - времени
@@ -29,7 +32,7 @@ def gpx_file_builder(file: BinaryIO) -> GpxFile:
     gpx = gpx_parser(file)
     coord, coord_per_hour = gpx_get_coord(gpx)
     med_coord = get_med_coord(coord)
-    weather = asyncio.run(async_block(med_coord))
+    weather, med_min_max_pt, zoom, dist = asyncio.run(async_block(med_coord, coord, gpx))
     return gpx
 
 def gpx_parser(file) -> gpxpy.gpx.GPX:
@@ -93,15 +96,69 @@ async def get_weather(med_coord: dict):
             resp = await client.get(url, params=params)
     return resp.json()
 
-async def async_block(med_coord: dict):
+async def get_med_min_max_point(coord):
+    """
+    Средняя, минимальная, максимальная точки
+    """
+    lat = [item["coord"][0] for item in coord]
+    lon = [item["coord"][1] for item in coord]
+    lat = {"min": min(lat), "max": max(lat)}
+    lon = {"min": min(lon), "max": max(lon)}
+    min_point = (lat["min"], lon["min"])
+    max_point = (lat["max"], lon["max"])
+    lat = round((lat["min"] + lat["max"]) / 2, 6)
+    lon = round((lon["min"] + lon["max"]) / 2, 6)
+    med_point = (lat, lon)
+    return {"med_point": med_point, "min_point": min_point, "max_point": max_point}
+
+async def find_zoom(max_min_points: dict) -> int:
+    """Поиск уровня увеличения для карты"""
+    dist = geodesic(max_min_points["min_point"], max_min_points["max_point"]).km
+    if dist <= 2:
+        return 15
+    if dist <= 4:
+        return 16
+    if dist <= 8:
+        return 13
+    if dist <= 15:
+        return 12
+    if dist <= 30:
+        return 11
+    else:
+        return 10
+
+async def get_dist(gpx: gpxpy.gpx.GPX) -> str:
+    """
+    Дистанция в строковом представлении
+    """
+    return str(round((gpx.tracks[0].segments[0].length_2d() / 1000), 2)) + " км"
+
+async def async_block(med_coord: dict, coord: list, gpx: gpxpy.gpx.GPX):
     """
     Асинхронный блок, задачи которые выполняются параллельно с запросом к API
     """
-    api_response = asyncio.create_task(get_weather(med_coord))
-    await api_response
-    return api_response.result()
+    task_api_response = asyncio.create_task(get_weather(med_coord))
+    task_med_min_max_points = asyncio.create_task(get_med_min_max_point(coord))
+    task_dist = asyncio.create_task(get_dist(gpx))
+    await task_med_min_max_points
+    task_zoom = asyncio.create_task(find_zoom(task_med_min_max_points.result()))
+    await task_api_response
+    await task_zoom
+    await task_dist
+    return task_api_response.result(), \
+        task_med_min_max_points.result(), \
+        task_zoom.result(), \
+        task_dist.result()
 
 
 if __name__ == '__main__':
+    start1 = time.time()
     with open("test.gpx", "rb") as f:
         gpx_file_builder(f)
+    end1 = time.time()
+    print(f"Результат новой функции {round(end1 - start1, 2)} сек.")
+    start2 = time.time()
+    with open("test.gpx", "rb") as f:
+        OldGPXFile(f)
+    end2 = time.time()
+    print(f"Результат старой функции {round(end2 - start2, 2)} сек.")
